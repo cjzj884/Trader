@@ -1,51 +1,83 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.Net.WebSockets;
-using System.Text;
-using System.Threading;
+﻿using System;
 using System.Threading.Tasks;
 
 namespace Trader
 {
     class Program
     {
+        private static readonly Config config = new Config();
+
         static void Main(string[] args)
         {
+            Console.WriteLine("Starting up");
             Run().Wait();
         }
 
         private static async Task Run()
         {
-            using (var ws = new ClientWebSocket())
+            var config = new Config();
+            var broker = ResolveBroker(config.Broker);
+            
+            var bullish = await broker.Initialize(config.TradingPair);
+            Console.WriteLine($"Warmup complete, starting out bullish={bullish}");
+
+            Sample high = null;
+            Sample low = null;
+            Sample current = null;
+            Sample lastSale = null;
+
+            while (true)
             {
-                await ws.ConnectAsync(new Uri("wss://ws-feed.gdax.com"), CancellationToken.None);
-                dynamic subscribeMessage = new ExpandoObject();
-                subscribeMessage.type = "subscribe";
-                subscribeMessage.product_ids = new List<string>() { "ETH-USD" };
-                subscribeMessage.channels = new List<string>() { "ticker" };
-                string subscribeMessageString = JsonConvert.SerializeObject(subscribeMessage);
+                current  = await broker.CheckPrice();
+                lastSale = lastSale ?? current;
+                high     = high == null || high.Value < current.Value ? current : high;
+                low      = low == null || low.Value > current.Value ? current : low;
+                    
+                if ((high.Value - low.Value) < current.Value * config.NoiseThreshold)
+                    continue; // The current activity is too small for us to care
 
-                await ws.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(subscribeMessageString)), WebSocketMessageType.Text, true, CancellationToken.None);
+                double timeSensitiveThreshold = CalcThresholdWithDecay(current, lastSale);
 
-                while (true)
+                if (bullish)
                 {
-                    var buffer = new ArraySegment<byte>(new byte[1024]);
-                    var result = await ws.ReceiveAsync(buffer, CancellationToken.None);
-
-                    dynamic message = JsonConvert.DeserializeObject(Encoding.UTF8.GetString(buffer.Array, 0, result.Count));
-                    if (message.type == "ticker")
+                    var thresholdValue = high.Value - (timeSensitiveThreshold * (high.Value - low.Value));
+                    if (current.Value < thresholdValue)
                     {
-                        Console.WriteLine($"ETH/USD Price: {message.price}");
+                        await broker.Sell(current);
+                        Console.WriteLine($"{DateTime.Now}: Executing buy @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Crypto={broker.CryptoValue:0.####}");
+                        Console.WriteLine($"{DateTime.Now}: Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}");
+                        bullish = false;
+                        low = null;
+                        lastSale = current;
                     }
-                    else
+                }
+                else // if bearish
+                {
+                    var thresholdValue = low.Value + (timeSensitiveThreshold * (high.Value - low.Value));
+                    if (current.Value > thresholdValue)
                     {
-                        Console.WriteLine("Got unknown message:");
-                        Console.WriteLine(message);
+                        await broker.Buy(current);
+                        Console.WriteLine($"{DateTime.Now}: Executing sell @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Crypto={broker.CryptoValue:0.####}");
+                        Console.WriteLine($"{DateTime.Now}: Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}");
+                        bullish = true;
+                        high = null;
+                        lastSale = current;
                     }
                 }
             }
+        }
+
+        private static double CalcThresholdWithDecay(Sample current, Sample lastSale)
+        {
+            var decay = ((double)(current.DateTime - lastSale.DateTime).Ticks) / config.SwingThresholdDecayInterval.Ticks;
+            decay = decay > 1 ? 1 : decay;
+            var timeSensitiveThreshold = config.SwingThreshold - (decay * (config.SwingThreshold - config.MinSwingThreshold));
+            return timeSensitiveThreshold;
+        }
+
+        private static IBroker ResolveBroker(Brokers brokerType)
+        {
+            return new DummyBroker(0, 4);
         }
     }
 }
