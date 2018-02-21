@@ -13,8 +13,8 @@ namespace Trader
 
         Task<Sample> CheckPrice();
 
-        Task Buy(Sample rate);
+        Task<double> Buy(Sample rate);
 
-        Task Sell(Sample rate);
+        Task<double> Sell(Sample rate);
     }
 }

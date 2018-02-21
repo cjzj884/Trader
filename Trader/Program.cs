@@ -1,15 +1,15 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using Autofac;
+using System;
+using System.Linq;
 
 namespace Trader
 {
     class Program
     {
-        private static readonly Config config = new Config();
-
         static void Main(string[] args)
         {
             Console.WriteLine("Starting up");
+<<<<<<< HEAD
             Run().Wait();
         }
 
@@ -71,20 +71,33 @@ namespace Trader
                         lastSale = current;
                     }
                 }
+=======
+            using (var container = ConfigureDependencies())
+            {
+                new Trader(new Config(), container).Run().Wait();
+>>>>>>> c07ad1b3a0eae830b7904911c696c8466f46dac1
             }
         }
 
-        private static double CalcThresholdWithDecay(Sample current, Sample lastSale)
+        private static IContainer ConfigureDependencies()
         {
-            var decay = ((double)(current.DateTime - lastSale.DateTime).Ticks) / config.SwingThresholdDecayInterval.Ticks;
-            decay = decay > 1 ? 1 : decay;
-            var timeSensitiveThreshold = config.SwingThreshold - (decay * (config.SwingThreshold - config.MinSwingThreshold));
-            return timeSensitiveThreshold;
+            var builder = new ContainerBuilder();
+            builder.RegisterAssemblyTypes(typeof(Program).Assembly)
+                .AssignableTo<IBroker>()
+                .Keyed<IBroker>(t => GetBrokerType(t));
+
+            return builder.Build();
         }
 
-        private static IBroker ResolveBroker(Brokers brokerType)
+        private static Brokers GetBrokerType(Type type)
         {
-            return new DummyBroker(0, 4);
+            var att = type.GetCustomAttributes(true).OfType<BrokerTypeAttribute>().FirstOrDefault();
+            if (att == null)
+            {
+                throw new Exception("Somone forgot to put the MessageHandlerAttribute on an IMessageHandler!");
+            }
+
+            return att.Broker;
         }
     }
 }
