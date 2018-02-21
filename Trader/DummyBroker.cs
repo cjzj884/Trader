@@ -14,6 +14,7 @@ namespace Trader
         private double fiat;
         private double crypto;
         private ClientWebSocket socket;
+        private string tradingPair;
 
         public DummyBroker(double initialFiat, double initialCrypto)
         {
@@ -28,16 +29,8 @@ namespace Trader
         public async Task<bool> Initialize(string tradingPair)
         {
             this.Dispose(); // Is this weird? This feels a little weird
-
-            socket = new ClientWebSocket();
-            await socket.ConnectAsync(new Uri("wss://ws-feed.gdax.com"), CancellationToken.None);
-            dynamic subscribeMessage = new ExpandoObject();
-            subscribeMessage.type = "subscribe";
-            subscribeMessage.product_ids = new List<string>() { tradingPair };
-            subscribeMessage.channels = new List<string>() { "ticker" };
-            string subscribeMessageString = JsonConvert.SerializeObject(subscribeMessage);
-
-            await socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(subscribeMessageString)), WebSocketMessageType.Text, true, CancellationToken.None);
+            this.tradingPair = tradingPair;
+            await this.OpenSocketAndSubscribe(tradingPair);
 
             var startTime = DateTime.UtcNow;
             var endTime = startTime + TimeSpan.FromMinutes(20);
@@ -74,7 +67,21 @@ namespace Trader
             while (true)
             {
                 var buffer = new ArraySegment<byte>(new byte[1024]);
-                var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+
+                WebSocketReceiveResult result;
+                try
+                {
+                    result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+                }
+                catch (WebSocketException e)
+                {
+                    // Connection disrupted
+                    Console.WriteLine($"Warning - connection disrupted: {e.Message}");
+                    Console.WriteLine($"Attempting to re-establish...");
+                    await this.OpenSocketAndSubscribe(this.tradingPair);
+                    return await this.CheckPrice();
+                }
+                
                 dynamic message = JsonConvert.DeserializeObject(Encoding.UTF8.GetString(buffer.Array, 0, result.Count));
 
                 if (message.type != "ticker")
@@ -95,6 +102,20 @@ namespace Trader
                 socket.Dispose();
                 socket = null;
             }
+        }
+
+        private async Task OpenSocketAndSubscribe(string tradingPair)
+        {
+            socket = new ClientWebSocket();
+            await socket.ConnectAsync(new Uri("wss://ws-feed.gdax.com"), CancellationToken.None);
+            dynamic subscribeMessage = new {
+                type = "subscribe",
+                product_ids = new List<string>() { tradingPair },
+                channels = new List<string>() { "ticker" }
+            };
+            string subscribeMessageString = JsonConvert.SerializeObject(subscribeMessage);
+
+            await socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(subscribeMessageString)), WebSocketMessageType.Text, true, CancellationToken.None);
         }
     }
 }

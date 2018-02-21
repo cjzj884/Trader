@@ -20,6 +20,15 @@ namespace Trader
             
             var bullish = await broker.Initialize(config.TradingPair);
             Console.WriteLine($"Warmup complete, starting out bullish={bullish}");
+            var initialPrice = await broker.CheckPrice();
+            if (bullish)
+            {
+                await broker.Buy(initialPrice);
+            }
+            else
+            {
+                await broker.Sell(initialPrice);
+            }
 
             Sample high = null;
             Sample low = null;
@@ -44,8 +53,7 @@ namespace Trader
                     if (current.Value < thresholdValue)
                     {
                         await broker.Sell(current);
-                        Console.WriteLine($"{DateTime.Now}: Executing buy @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Crypto={broker.CryptoValue:0.####}");
-                        Console.WriteLine($"{DateTime.Now}: Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}");
+                        Console.WriteLine($"{DateTime.Now}: Executing sell @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Crypto={broker.CryptoValue:0.####}, Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}");
                         bullish = false;
                         low = null;
                         lastSale = current;
@@ -57,8 +65,7 @@ namespace Trader
                     if (current.Value > thresholdValue)
                     {
                         await broker.Buy(current);
-                        Console.WriteLine($"{DateTime.Now}: Executing sell @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Crypto={broker.CryptoValue:0.####}");
-                        Console.WriteLine($"{DateTime.Now}: Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}");
+                        Console.WriteLine($"{DateTime.Now}: Executing buy @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Crypto={broker.CryptoValue:0.####}, Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}");
                         bullish = true;
                         high = null;
                         lastSale = current;
