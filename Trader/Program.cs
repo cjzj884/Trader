@@ -80,7 +80,7 @@ namespace Trader
 
         private static IBroker ResolveBroker(Brokers brokerType)
         {
-            return new DummyBroker(0, 4);
+            return new DummyBroker(0, 4, new WebSocket());
         }
     }
 }
