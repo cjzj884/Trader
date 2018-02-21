@@ -6,16 +6,18 @@ using System.Threading.Tasks;
 
 namespace Trader
 {
+
+    [BrokerType(Brokers.GDAXReadOnly)]
     public class DummyBroker : IBroker
     {
         private double fiat;
         private double crypto;
-        private IWebSocket socket;
+        private readonly IWebSocket socket;
 
-        public DummyBroker(double initialFiat, double initialCrypto, IWebSocket socket)
+        public DummyBroker(IWebSocket socket)
         {
-            fiat = initialFiat;
-            crypto = initialCrypto;
+            fiat = 0;
+            crypto = 10;
             this.socket = socket;
         }
 
@@ -25,8 +27,6 @@ namespace Trader
         
         public async Task<bool> Initialize(string tradingPair)
         {
-            this.Dispose(); // Is this weird? This feels a little weird
-            
             await socket.Connect("wss://ws-feed.gdax.com");
             dynamic subscribeMessage = new ExpandoObject();
             subscribeMessage.type = "subscribe";
@@ -91,7 +91,6 @@ namespace Trader
             if (socket != null)
             {
                 socket.Dispose();
-                socket = null;
             }
         }
     }
