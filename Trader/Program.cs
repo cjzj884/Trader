@@ -25,6 +25,7 @@ namespace Trader
             Sample low = null;
             Sample current = null;
             Sample lastSale = null;
+            double totalFees = 0;
 
             while (true)
             {
@@ -43,9 +44,10 @@ namespace Trader
                     var thresholdValue = high.Value - (timeSensitiveThreshold * (high.Value - low.Value));
                     if (current.Value < thresholdValue)
                     {
-                        await broker.Sell(current);
-                        Console.WriteLine($"{DateTime.Now}: Executing buy @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Crypto={broker.CryptoValue:0.####}");
-                        Console.WriteLine($"{DateTime.Now}: Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}");
+                        var fee = await broker.Sell(current);
+                        totalFees += fee / current.Value;
+                        Console.WriteLine($"{DateTime.Now}: Executing buy @ {current.Value:0.####}: Crypto={broker.CryptoValue:0.####}, Fee={fee}");
+                        Console.WriteLine($"{DateTime.Now}: Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}, total fees={totalFees}");
                         bullish = false;
                         low = null;
                         lastSale = current;
@@ -56,9 +58,10 @@ namespace Trader
                     var thresholdValue = low.Value + (timeSensitiveThreshold * (high.Value - low.Value));
                     if (current.Value > thresholdValue)
                     {
-                        await broker.Buy(current);
-                        Console.WriteLine($"{DateTime.Now}: Executing sell @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Crypto={broker.CryptoValue:0.####}");
-                        Console.WriteLine($"{DateTime.Now}: Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}");
+                        var fee = await broker.Buy(current);
+                        totalFees += fee;
+                        Console.WriteLine($"{DateTime.Now}: Executing sell @ {current.Value:0.####}: Fiat={broker.FiatValue:0.####}, Fee={fee}");
+                        Console.WriteLine($"{DateTime.Now}: Low={low.Value}@{low.DateTime}, High={high.Value}@{high.DateTime}, total fees={totalFees}");
                         bullish = true;
                         high = null;
                         lastSale = current;

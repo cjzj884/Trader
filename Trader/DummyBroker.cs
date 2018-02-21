@@ -24,7 +24,7 @@ namespace Trader
         public double FiatValue { get => fiat; }
 
         public double CryptoValue { get => crypto; }
-
+        
         public async Task<bool> Initialize(string tradingPair)
         {
             this.Dispose(); // Is this weird? This feels a little weird
@@ -54,19 +54,23 @@ namespace Trader
             return startSample.Value < endSample.Value;
         }
 
-        public Task Buy(Sample rate)
+        public Task<double> Buy(Sample rate)
         {
             crypto += (fiat / rate.Value);
+            var fee = crypto * 0.003;
+            crypto -= fee;
             fiat = 0;
-            return Task.CompletedTask;
+            return Task.FromResult(fee);
         }
 
-        public Task Sell(Sample rate)
+        public Task<double> Sell(Sample rate)
         {
             fiat += (rate.Value * crypto);
+            var fee = fiat * 0.003;
+            fiat -= fee;
             crypto = 0;
 
-            return Task.CompletedTask;
+            return Task.FromResult(fee);
         }
 
         public async Task<Sample> CheckPrice()
