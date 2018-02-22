@@ -1,16 +1,40 @@
 ﻿using System;
+using System.Configuration;
 
 namespace Trader
 {
-    // TODO - load these from a file. Maybe watch file and hotload changes?
     public class Config
     {
-        public readonly double NoiseThreshold = 0.005;
-        public readonly double SwingThreshold = 0.20;
-        public readonly double MinSwingThreshold = 0.05;
-        public readonly TimeSpan SwingThresholdDecayInterval = TimeSpan.FromDays(5);
+        public Config()
+        {
+            Reload();
+        }
 
-        public readonly Brokers Broker = Brokers.GDAXReadOnly;
-        public readonly string TradingPair = "ETH-USD";
+        public void Reload()
+        {
+            // TODO add some sanity checks
+            try
+            {
+                ConfigurationManager.RefreshSection("appSettings");
+                NoiseThreshold = double.Parse(ConfigurationManager.AppSettings["NoiseThreshold"]);
+                SwingThreshold = double.Parse(ConfigurationManager.AppSettings["SwingThreshold"]);
+                MinSwingThreshold = double.Parse(ConfigurationManager.AppSettings["MinSwingThreshold"]);
+                SwingThresholdDecayInterval = TimeSpan.FromDays(int.Parse(ConfigurationManager.AppSettings["SwingThresholdDecayIntervalDays"]));
+                Broker = (Brokers)Enum.Parse(typeof(Brokers), ConfigurationManager.AppSettings["Broker"]);
+                TradingPair = ConfigurationManager.AppSettings["TradingPair"];
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Exception while updating config values: {e.Message}");
+                throw;
+            }
+        }
+
+        public double NoiseThreshold { get; private set; }
+        public double SwingThreshold { get; private set; }
+        public double MinSwingThreshold { get; private set; }
+        public TimeSpan SwingThresholdDecayInterval { get; private set; }
+        public Brokers Broker { get; private set; }
+        public string TradingPair { get; private set; }
     }
 }

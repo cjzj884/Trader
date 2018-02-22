@@ -17,7 +17,6 @@ namespace Trader
 
         public async Task Run()
         {
-            var config = new Config();
             var broker = dependencies.ResolveKeyed<IBroker>(config.Broker);
 
             var bullish = await broker.Initialize(config.TradingPair);

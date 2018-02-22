@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 namespace Trader
 {
-
     [BrokerType(Brokers.GDAXReadOnly)]
     public class DummyBroker : IBroker
     {

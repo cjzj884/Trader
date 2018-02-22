@@ -1,4 +1,5 @@
 ﻿using Autofac;
+using FluentScheduler;
 using System;
 using System.Linq;
 
@@ -9,15 +10,27 @@ namespace Trader
         static void Main(string[] args)
         {
             Console.WriteLine("Starting up");
+
+            var config = new Config();
+
+            var registry = new Registry();
+            registry.Schedule(() => config.Reload()).ToRunEvery(30).Seconds();
+            JobManager.Initialize(registry);
+            JobManager.JobException += (exInfo) => { throw exInfo.Exception; };
+
             using (var container = ConfigureDependencies())
             {
-                new Trader(new Config(), container).Run().Wait();
+                new Trader(config, container).Run().Wait();
             }
+            JobManager.StopAndBlock();
         }
 
         private static IContainer ConfigureDependencies()
         {
             var builder = new ContainerBuilder();
+
+            builder.RegisterType<WebSocket>().As<IWebSocket>();
+
             builder.RegisterAssemblyTypes(typeof(Program).Assembly)
                 .AssignableTo<IBroker>()
                 .Keyed<IBroker>(t => GetBrokerType(t));
