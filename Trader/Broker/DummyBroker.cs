@@ -3,14 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
+using Trader.Networking;
 
-namespace Trader
+namespace Trader.Broker
 {
     [BrokerType(Brokers.GDAXReadOnly)]
     public class DummyBroker : IBroker
     {
         private double fiat;
         private double crypto;
+        private double fees;
         private string tradingPair;
         private readonly IWebSocket socket;
 
@@ -24,14 +26,16 @@ namespace Trader
         public double FiatValue { get => fiat; }
 
         public double CryptoValue { get => crypto; }
-        
+
+        public double Fees { get => fees;  }
+
         public async Task<bool> Initialize(string tradingPair)
         {
             this.tradingPair = tradingPair;
             await this.OpenSocketAndSubscribe(tradingPair);
 
             var startTime = DateTime.UtcNow;
-            var endTime = startTime + TimeSpan.FromMinutes(20);
+            var endTime = startTime + TimeSpan.FromMinutes(2);
             Sample startSample = null;
             Sample endSample = null;
 
@@ -49,6 +53,7 @@ namespace Trader
         {
             crypto += (fiat / rate.Value);
             var fee = crypto * 0.003;
+            fees += fee * rate.Value;
             crypto -= fee;
             fiat = 0;
             return Task.FromResult(fee);
@@ -58,6 +63,7 @@ namespace Trader
         {
             fiat += (rate.Value * crypto);
             var fee = fiat * 0.003;
+            fees += fee;
             fiat -= fee;
             crypto = 0;
 
@@ -95,6 +101,11 @@ namespace Trader
                 }
             } while (sample == null);
             return sample;
+        }
+
+        public double GetTotalValue(Sample sample)
+        {
+            return FiatValue + (CryptoValue * sample.Value);
         }
 
         public void Dispose()

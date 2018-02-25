@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Trader
+namespace Trader.Networking
 {
     public interface IWebSocket : IDisposable
     {

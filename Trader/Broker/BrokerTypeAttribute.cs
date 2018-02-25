@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Trader
+namespace Trader.Broker
 {
     public class BrokerTypeAttribute : Attribute
     {

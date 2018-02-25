@@ -2,6 +2,9 @@
 using FluentScheduler;
 using System;
 using System.Linq;
+using Trader.Broker;
+using Trader.Networking;
+using Trader.Reporter;
 
 namespace Trader
 {
@@ -35,7 +38,23 @@ namespace Trader
                 .AssignableTo<IBroker>()
                 .Keyed<IBroker>(t => GetBrokerType(t));
 
+            builder.RegisterAssemblyTypes(typeof(Program).Assembly)
+                .AssignableTo<IReporter>()
+                .Keyed<IReporter>(t => GetReporterType(t));
+
             return builder.Build();
+        }
+
+
+        private static Reporters GetReporterType(Type type)
+        {
+            var att = type.GetCustomAttributes(true).OfType<ReporterTypeAttribute>().FirstOrDefault();
+            if (att == null)
+            {
+                throw new Exception($"This reporter ({type.FullName}) doesn't have a ReporterTypeAttribute; it can't be used and I hate it and I'm going to die now");
+            }
+
+            return att.Reporter;
         }
 
         private static Brokers GetBrokerType(Type type)

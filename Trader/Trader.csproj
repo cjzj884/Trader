@@ -59,17 +59,21 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Brokers.cs" />
-    <Compile Include="BrokerTypeAttribute.cs" />
+    <Compile Include="Broker\Brokers.cs" />
+    <Compile Include="Broker\BrokerTypeAttribute.cs" />
     <Compile Include="Config.cs" />
-    <Compile Include="DummyBroker.cs" />
-    <Compile Include="IBroker.cs" />
-    <Compile Include="IWebSocket.cs" />
+    <Compile Include="Broker\DummyBroker.cs" />
+    <Compile Include="Broker\IBroker.cs" />
+    <Compile Include="Reporter\FileAndConsoleReporter.cs" />
+    <Compile Include="Reporter\IReporter.cs" />
+    <Compile Include="Networking\IWebSocket.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Reporter\Reporters.cs" />
+    <Compile Include="Reporter\ReporterTypeAttribute.cs" />
     <Compile Include="Sample.cs" />
     <Compile Include="Trader.cs" />
-    <Compile Include="WebSocket.cs" />
+    <Compile Include="Networking\WebSocket.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

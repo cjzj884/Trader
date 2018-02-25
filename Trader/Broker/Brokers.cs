@@ -1,4 +1,4 @@
-﻿namespace Trader
+﻿namespace Trader.Broker
 {
     public enum Brokers
     {
