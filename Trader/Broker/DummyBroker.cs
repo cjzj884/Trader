@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
 using Trader.Networking;
+using Trader.Time;
 
 namespace Trader.Broker
 {
@@ -14,32 +15,40 @@ namespace Trader.Broker
         private double crypto;
         private double fees;
         private string tradingPair;
+        private bool connected;
         private readonly IWebSocket socket;
+        private readonly ITime time;
 
-        public DummyBroker(IWebSocket socket)
+        public DummyBroker(IWebSocket socket, ITime time)
         {
-            fiat = 0;
+            fiat = 10;
             crypto = 10;
             this.socket = socket;
+            this.time = time;
+            connected = false;
         }
 
         public double FiatValue { get => fiat; }
 
         public double CryptoValue { get => crypto; }
 
-        public double Fees { get => fees;  }
+        public double Fees { get => fees; }
 
         public async Task<bool> Initialize(string tradingPair)
         {
-            this.tradingPair = tradingPair;
+            this.tradingPair = tradingPair ?? throw new ArgumentNullException(nameof(tradingPair));
+            if (tradingPair == string.Empty)
+            {
+                throw new ArgumentException($"{nameof(tradingPair)} cannot be an empty string", nameof(tradingPair));
+            }
             await this.OpenSocketAndSubscribe(tradingPair);
 
-            var startTime = DateTime.UtcNow;
-            var endTime = startTime + TimeSpan.FromMinutes(2);
+            var startTime = time.Now;
+            var endTime = startTime + TimeSpan.FromMinutes(10);
             Sample startSample = null;
             Sample endSample = null;
 
-            while (DateTime.UtcNow < endTime)
+            while (time.Now < endTime)
             {
                 var sample = await CheckPrice();
                 startSample = startSample ?? sample;
@@ -51,20 +60,28 @@ namespace Trader.Broker
 
         public Task<double> Buy(Sample rate)
         {
-            crypto += (fiat / rate.Value);
-            var fee = crypto * 0.003;
-            fees += fee * rate.Value;
-            crypto -= fee;
+            if (rate == null)
+                throw new ArgumentNullException(nameof(rate));
+            if (!connected)
+                throw new InvalidOperationException("Broker cannot Buy until Initialized!");
+
+            var fee = fiat * 0.003;
+            crypto += ((fiat - fee) / rate.Value);
+            fees += fee;
             fiat = 0;
             return Task.FromResult(fee);
         }
 
         public Task<double> Sell(Sample rate)
         {
-            fiat += (rate.Value * crypto);
-            var fee = fiat * 0.003;
+            if (rate == null)
+                throw new ArgumentNullException(nameof(rate));
+            if (!connected)
+                throw new InvalidOperationException("Broker cannot Sell until Initialized!");
+
+            var fee = (crypto * rate.Value) * 0.003;
+            fiat += (crypto - (fee / rate.Value)) * rate.Value;
             fees += fee;
-            fiat -= fee;
             crypto = 0;
 
             return Task.FromResult(fee);
@@ -72,6 +89,9 @@ namespace Trader.Broker
 
         public async Task<Sample> CheckPrice()
         {
+            if (!connected)
+                throw new InvalidOperationException("Broker cannot CheckPrice until Initialized!");
+
             Sample sample = null;
             do
             {
@@ -82,6 +102,7 @@ namespace Trader.Broker
                 }
                 catch (WebSocketException e)
                 {
+                    connected = false;
                     Console.WriteLine($"SOCKET ERROR: {e.Message}");
                     Console.WriteLine("Attempting reconnect and trying again");
                     await OpenSocketAndSubscribe(this.tradingPair);
@@ -92,7 +113,7 @@ namespace Trader.Broker
 
                 if (message.type == "ticker")
                 {
-                    sample = new Sample() { Value = message.price, DateTime = DateTime.UtcNow };
+                    sample = new Sample() { Value = message.price, DateTime = time.Now };
                 }
                 else
                 {
@@ -103,9 +124,12 @@ namespace Trader.Broker
             return sample;
         }
 
-        public double GetTotalValue(Sample sample)
+        public double GetTotalValue(Sample rate)
         {
-            return FiatValue + (CryptoValue * sample.Value);
+            if (rate == null)
+                throw new ArgumentNullException(nameof(rate));
+
+            return FiatValue + (CryptoValue * rate.Value);
         }
 
         public void Dispose()
@@ -114,11 +138,13 @@ namespace Trader.Broker
             {
                 socket.Dispose();
             }
+            connected = false;
         }
 
         private async Task OpenSocketAndSubscribe(string tradingPair)
         {
             await socket.Connect("wss://ws-feed.gdax.com");
+            connected = true;
             dynamic subscribeMessage = new {
                 type = "subscribe",
                 product_ids = new List<string>() { tradingPair },

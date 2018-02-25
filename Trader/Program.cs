@@ -5,6 +5,7 @@ using System.Linq;
 using Trader.Broker;
 using Trader.Networking;
 using Trader.Reporter;
+using Trader.Time;
 
 namespace Trader
 {
@@ -33,6 +34,7 @@ namespace Trader
             var builder = new ContainerBuilder();
 
             builder.RegisterType<WebSocket>().As<IWebSocket>();
+            builder.RegisterType<UtcTime>().As<ITime>();
 
             builder.RegisterAssemblyTypes(typeof(Program).Assembly)
                 .AssignableTo<IBroker>()
