@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
@@ -109,15 +110,19 @@ namespace Trader.Broker
                     continue;
                 }
 
-                dynamic message = JsonConvert.DeserializeObject(json);
-
-                if (message.type == "ticker")
+                JObject message = JsonConvert.DeserializeObject(json) as JObject;
+                double price = 0;
+                if (message != null &&
+                    message.ContainsKey("type") &&
+                    message.GetValue("type").ToString() == "ticker" &&
+                    message.ContainsKey("price") &&
+                    Double.TryParse(message.GetValue("price").ToString(), out price))
                 {
-                    sample = new Sample() { Value = message.price, DateTime = time.Now };
+                    sample = new Sample() { Value = price, DateTime = time.Now };
                 }
                 else
                 {
-                    Console.WriteLine("Got unknown message:");
+                    Console.WriteLine("Got non-ticker/unparseable message:");
                     Console.WriteLine(message);
                 }
             } while (sample == null);

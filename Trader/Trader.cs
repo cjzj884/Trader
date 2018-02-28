@@ -9,64 +9,67 @@ namespace Trader
     public class Trader
     {
         private readonly Config config;
-        private readonly IContainer dependencies;
+        private readonly IBroker broker;
+        private readonly IReporter reporter;
+        private bool initialized = false;
+        public Sample High { get; set; }
+        public Sample Low { get; set; }
+        public Sample Current { get; set; }
+        public Sample LastSale { get; set; }
+        public bool Bullish { get; set; }
 
-        public Trader(Config config, IContainer dependencies)
+        public Trader(Config config, IBroker broker, IReporter reporter)
         {
-            this.config = config;
-            this.dependencies = dependencies;
+            this.config = config ?? throw new ArgumentNullException(nameof(config));
+            this.broker = broker ?? throw new ArgumentNullException(nameof(broker));
+            this.reporter = reporter ?? throw new ArgumentNullException(nameof(reporter)); ;
         }
 
-        public async Task Run()
+        public async Task Initialize()
         {
-            var broker = dependencies.ResolveKeyed<IBroker>(config.Broker);
-            var reporter = dependencies.ResolveKeyed<IReporter>(config.Reporter);
+            Bullish = await broker.Initialize(config.TradingPair);
+            await reporter.ReportInitial(Bullish);
+            initialized = true;
+        }
 
-            var bullish = await broker.Initialize(config.TradingPair);
-            Console.WriteLine($"Warmup complete, starting out bullish={bullish}");
+        public async Task Trade()
+        {
+            if (!initialized)
+                throw new InvalidOperationException("Trader must be Initialized before it can Trade");
 
-            Sample high = null;
-            Sample low = null;
-            Sample current = null;
-            Sample lastSale = null;
+            Current = await broker.CheckPrice();
+            await reporter.ReportNewPrice(broker, Current);
+            LastSale = LastSale ?? Current;
+            High = High == null || High.Value < Current.Value ? Current : High;
+            Low = Low == null || Low.Value > Current.Value ? Current : Low;
 
-            while (true)
+            if (Math.Abs(Current.Value - LastSale.Value) < Current.Value * config.NoiseThreshold)
+                return; // The current activity is too small for us to care
+
+            double timeSensitiveThreshold = CalcThresholdWithDecay(Current, LastSale);
+
+            if (Bullish)
             {
-                current = await broker.CheckPrice();
-                await reporter.ReportNewPrice(broker, current);
-                lastSale = lastSale ?? current;
-                high = high == null || high.Value < current.Value ? current : high;
-                low = low == null || low.Value > current.Value ? current : low;
-
-                if ((high.Value - current.Value) < current.Value * config.NoiseThreshold ||
-                    (current.Value - low.Value) < current.Value * config.NoiseThreshold)
-                    continue; // The current activity is too small for us to care
-
-                double timeSensitiveThreshold = CalcThresholdWithDecay(current, lastSale);
-
-                if (bullish)
+                var thresholdValue = High.Value - (timeSensitiveThreshold * (High.Value - Low.Value));
+                if (Current.Value < thresholdValue)
                 {
-                    var thresholdValue = high.Value - (timeSensitiveThreshold * (high.Value - low.Value));
-                    if (current.Value < thresholdValue)
-                    {
-                        var fee = await broker.Sell(current);
-                        await reporter.ReportSell(broker, current);
-                        bullish = false;
-                        low = null;
-                        lastSale = current;
-                    }
+                    var fee = await broker.Sell(Current);
+                    await reporter.ReportSell(broker, Current);
+                    Bullish = false;
+                    Low = null;
+                    LastSale = Current;
                 }
-                else // if bearish
+            }
+            else // if bearish
+            {
+                var thresholdValue = Low.Value + (timeSensitiveThreshold * (High.Value - Low.Value));
+                if (Current.Value > thresholdValue)
                 {
-                    var thresholdValue = low.Value + (timeSensitiveThreshold * (high.Value - low.Value));
-                    if (current.Value > thresholdValue)
-                    {
-                        var fee = await broker.Buy(current);
-                        await reporter.ReportBuy(broker, current);
-                        bullish = true;
-                        high = null;
-                        lastSale = current;
-                    }
+                    var fee = await broker.Buy(Current);
+                    await reporter.ReportBuy(broker, Current);
+                    Bullish = true;
+                    High = null;
+                    LastSale = Current;
                 }
             }
         }

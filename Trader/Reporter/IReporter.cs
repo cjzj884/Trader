@@ -10,5 +10,6 @@ namespace Trader.Reporter
         Task ReportSell(IBroker broker, Sample sample);
 
         Task ReportNewPrice(IBroker broker, Sample sample);
+        Task ReportInitial(bool bullish);
     }
 }

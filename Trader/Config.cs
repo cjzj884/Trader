@@ -7,9 +7,10 @@ namespace Trader
 {
     public class Config
     {
-        public Config()
+        public Config(bool loadNow = true)
         {
-            Reload();
+            if (loadNow)
+                Reload();
         }
 
         public void Reload()
@@ -33,12 +34,12 @@ namespace Trader
             }
         }
 
-        public double NoiseThreshold { get; private set; }
-        public double SwingThreshold { get; private set; }
-        public double MinSwingThreshold { get; private set; }
-        public TimeSpan SwingThresholdDecayInterval { get; private set; }
-        public Brokers Broker { get; private set; }
-        public Reporters Reporter { get; private set; }
-        public string TradingPair { get; private set; }
+        public double NoiseThreshold { get; set; }
+        public double SwingThreshold { get; set; }
+        public double MinSwingThreshold { get; set; }
+        public TimeSpan SwingThresholdDecayInterval { get; set; }
+        public Brokers Broker { get; set; }
+        public Reporters Reporter { get; set; }
+        public string TradingPair { get; set; }
     }
 }
