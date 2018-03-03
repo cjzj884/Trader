@@ -71,8 +71,12 @@
     <Compile Include="Broker\Brokers.cs" />
     <Compile Include="Broker\BrokerTypeAttribute.cs" />
     <Compile Include="Config.cs" />
-    <Compile Include="Broker\DummyBroker.cs" />
+    <Compile Include="Broker\DemoBroker.cs" />
     <Compile Include="Broker\IBroker.cs" />
+    <Compile Include="Exchange\Assets.cs" />
+    <Compile Include="Exchange\ExchangeTypeAttribute.cs" />
+    <Compile Include="Exchange\Exchanges.cs" />
+    <Compile Include="Exchange\IExchange.cs" />
     <Compile Include="Reporter\FileAndConsoleReporter.cs" />
     <Compile Include="Reporter\IReporter.cs" />
     <Compile Include="Networking\IWebSocket.cs" />
@@ -87,8 +91,13 @@
     <Compile Include="Networking\WebSocket.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Exchange\GDAX.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

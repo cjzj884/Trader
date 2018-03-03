@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Trader.Exchange;
 
 namespace Trader.Broker
 {
     public interface IBroker : IDisposable
     {
-        double FiatValue { get; }
-
-        double CryptoValue { get; }
+        double Asset1Holdings { get; }
+        double Asset2Holdings { get; }
 
         double Fees { get; }
 
         double GetTotalValue(Sample sample);
 
-        Task<bool> Initialize(string tradingPair);
+        Task<bool> Initialize(Assets asset1, Assets asset2);
 
         Task<Sample> CheckPrice();
 

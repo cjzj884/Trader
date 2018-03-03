@@ -2,6 +2,7 @@
 using Moq;
 using System;
 using Trader.Broker;
+using Trader.Exchange;
 using Trader.Reporter;
 
 namespace Trader.Tests
@@ -47,15 +48,15 @@ namespace Trader.Tests
         [TestMethod]
         public void Initialize_InitializesBroker_AndReportsIt()
         {
-            var config = new Config(false) { TradingPair = "DOGE-DOGE" };
+            var config = new Config(false) { Asset1 = Assets.DOGE, Asset2 = Assets.DOGE };
             var brokerMock = new Mock<IBroker>();
-            brokerMock.Setup(m => m.Initialize("DOGE-DOGE")).ReturnsAsync(true);
+            brokerMock.Setup(m => m.Initialize(Assets.DOGE, Assets.DOGE)).ReturnsAsync(true);
             var reporterMock = new Mock<IReporter>();
             var subject = new Trader(config, brokerMock.Object, reporterMock.Object);
 
             subject.Initialize().Wait();
 
-            brokerMock.Verify(m => m.Initialize("DOGE-DOGE"));
+            brokerMock.Verify(m => m.Initialize(Assets.DOGE, Assets.DOGE));
             reporterMock.Verify(m => m.ReportInitial(true));
         }
 
@@ -81,10 +82,10 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1005 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(true);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
-            var config = new Config(false) { NoiseThreshold = 0.01, TradingPair = "BTC-DOGE" };
+            var config = new Config(false) { NoiseThreshold = 0.01, Asset1 = Assets.BTC, Asset2 = Assets.DOGE };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
             subject.LastSale = new Sample() { Value = 1000 };
@@ -103,10 +104,10 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 995 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(true);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
-            var config = new Config(false) { NoiseThreshold = 0.01, TradingPair = "BTC-DOGE" };
+            var config = new Config(false) { NoiseThreshold = 0.01, Asset1 = Assets.BTC, Asset2 = Assets.DOGE };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
             subject.LastSale = new Sample() { Value = 1000 };
@@ -129,7 +130,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1100 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(true);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false) {
@@ -137,7 +138,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.MaxValue,
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -160,7 +162,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1131 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(true);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -169,7 +171,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.MaxValue,
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -193,7 +196,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1129 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(true);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -202,7 +205,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.MaxValue,
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -229,7 +233,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1134, DateTime = DateTime.Now };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(true);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -238,7 +242,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.FromDays(1),
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -265,7 +270,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1141, DateTime = DateTime.Now };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(true);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -274,7 +279,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.FromDays(1),
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -302,7 +308,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 840 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(false);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -311,7 +317,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.MaxValue,
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -334,7 +341,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 969 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(false);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -343,7 +350,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.MaxValue,
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -367,7 +375,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 971 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(false);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -376,7 +384,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.MaxValue,
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -403,7 +412,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 966, DateTime = DateTime.Now };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(false);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -412,7 +421,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.FromDays(1),
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);
@@ -439,7 +449,7 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 959, DateTime = DateTime.Now };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize("BTC-DOGE")).ReturnsAsync(false);
+            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
             broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
@@ -448,7 +458,8 @@ namespace Trader.Tests
                 SwingThreshold = 0.10,
                 MinSwingThreshold = 0.05,
                 SwingThresholdDecayInterval = TimeSpan.FromDays(1),
-                TradingPair = "BTC-DOGE"
+                Asset1 = Assets.BTC,
+                Asset2 = Assets.DOGE
             };
 
             var subject = new Trader(config, broker.Object, reporter.Object);

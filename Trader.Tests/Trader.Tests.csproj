@@ -65,7 +65,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Broker\DummyBrokerTests.cs" />
+    <Compile Include="Broker\DemoBrokerTests.cs" />
+    <Compile Include="Exchange\GDAXTests.cs" />
     <Compile Include="Expect.cs" />
     <Compile Include="JsonHelp.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

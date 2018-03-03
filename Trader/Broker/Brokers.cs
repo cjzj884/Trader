@@ -2,6 +2,6 @@
 {
     public enum Brokers
     {
-        GDAXReadOnly, GDAX
+        Demo, Live
     }
 }

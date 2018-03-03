@@ -1,5 +1,4 @@
-﻿using Autofac;
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Trader.Broker;
 using Trader.Reporter;
@@ -27,7 +26,7 @@ namespace Trader
 
         public async Task Initialize()
         {
-            Bullish = await broker.Initialize(config.TradingPair);
+            Bullish = await broker.Initialize(config.Asset1, config.Asset2);
             await reporter.ReportInitial(Bullish);
             initialized = true;
         }

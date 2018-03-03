@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Configuration;
 using Trader.Broker;
+using Trader.Exchange;
 using Trader.Reporter;
 
 namespace Trader
@@ -15,7 +16,6 @@ namespace Trader
 
         public void Reload()
         {
-            // TODO add some sanity checks
             try
             {
                 ConfigurationManager.RefreshSection("appSettings");
@@ -23,9 +23,11 @@ namespace Trader
                 SwingThreshold = double.Parse(ConfigurationManager.AppSettings["SwingThreshold"]);
                 MinSwingThreshold = double.Parse(ConfigurationManager.AppSettings["MinSwingThreshold"]);
                 SwingThresholdDecayInterval = TimeSpan.FromDays(int.Parse(ConfigurationManager.AppSettings["SwingThresholdDecayIntervalDays"]));
+                Exchange = (Exchanges)Enum.Parse(typeof(Exchanges), ConfigurationManager.AppSettings["Exchange"]);
                 Broker = (Brokers)Enum.Parse(typeof(Brokers), ConfigurationManager.AppSettings["Broker"]);
                 Reporter = (Reporters)Enum.Parse(typeof(Reporters), ConfigurationManager.AppSettings["Reporter"]);
-                TradingPair = ConfigurationManager.AppSettings["TradingPair"];
+                Asset1 = (Assets)Enum.Parse(typeof(Assets), ConfigurationManager.AppSettings["Asset1"]);
+                Asset2 = (Assets)Enum.Parse(typeof(Assets), ConfigurationManager.AppSettings["Asset2"]);
             }
             catch (Exception e)
             {
@@ -38,8 +40,10 @@ namespace Trader
         public double SwingThreshold { get; set; }
         public double MinSwingThreshold { get; set; }
         public TimeSpan SwingThresholdDecayInterval { get; set; }
+        public Exchanges Exchange { get; set; }
         public Brokers Broker { get; set; }
         public Reporters Reporter { get; set; }
-        public string TradingPair { get; set; }
+        public Assets Asset1 { get; set; }
+        public Assets Asset2 { get; set; }
     }
 }

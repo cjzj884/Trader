@@ -3,6 +3,7 @@ using FluentScheduler;
 using System;
 using System.Linq;
 using Trader.Broker;
+using Trader.Exchange;
 using Trader.Networking;
 using Trader.Reporter;
 using Trader.Time;
@@ -58,6 +59,13 @@ namespace Trader
 
             builder.RegisterType<WebSocket>().As<IWebSocket>();
             builder.RegisterType<UtcTime>().As<ITime>();
+
+            Type exchangeType = typeof(Program).Assembly.GetTypes().Where(t => t.IsAssignableTo<IExchange>()).FirstOrDefault((t) =>
+            {
+                var attr = t.GetCustomAttributes(true).OfType<ExchangeTypeAttribute>().FirstOrDefault();
+                return attr != null && attr.Exchange == config.Exchange;
+            });
+            builder.RegisterType(exchangeType).As<IExchange>();
 
             Type brokerType = typeof(Program).Assembly.GetTypes().Where(t => t.IsAssignableTo<IBroker>()).FirstOrDefault((t) =>
             {

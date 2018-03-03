@@ -28,7 +28,7 @@ namespace Trader.Reporter
 
             using (var appender = file.AppendText())
             {
-                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},buy,{broker.FiatValue},{broker.CryptoValue},{broker.Fees}");
+                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},buy,{broker.Asset2Holdings},{broker.Asset1Holdings},{broker.Fees}");
                 await appender.FlushAsync();
             }
         }
@@ -43,7 +43,7 @@ namespace Trader.Reporter
         {
             using (var appender = file.AppendText())
             {
-                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},update,{broker.FiatValue},{broker.CryptoValue},{broker.Fees}");
+                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},update,{broker.Asset2Holdings},{broker.Asset1Holdings},{broker.Fees}");
                 await appender.FlushAsync();
             }
         }
@@ -53,7 +53,7 @@ namespace Trader.Reporter
             PrintWithColor(ConsoleColor.Red, $"Executing sell @ {sample.Value:0.####}: Value={broker.GetTotalValue(sample):0.####}: Fees={broker.Fees}");
             using (var appender = file.AppendText())
             {
-                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},sell,{broker.FiatValue},{broker.CryptoValue},{broker.Fees}");
+                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},sell,{broker.Asset2Holdings},{broker.Asset1Holdings},{broker.Fees}");
                 await appender.FlushAsync();
             }
         }
