@@ -2,6 +2,6 @@
 {
     public enum Assets
     {
-        USD, BTC, ETH, LTC, BCH, DOGE
+        USD, USDT, BTC, ETH, LTC, BCH, DOGE
     }
 }

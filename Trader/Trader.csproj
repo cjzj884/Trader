@@ -74,6 +74,7 @@
     <Compile Include="Broker\DemoBroker.cs" />
     <Compile Include="Broker\IBroker.cs" />
     <Compile Include="Exchange\Assets.cs" />
+    <Compile Include="Exchange\Binance.cs" />
     <Compile Include="Exchange\ExchangeTypeAttribute.cs" />
     <Compile Include="Exchange\Exchanges.cs" />
     <Compile Include="Exchange\IExchange.cs" />

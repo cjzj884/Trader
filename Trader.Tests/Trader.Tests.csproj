@@ -66,6 +66,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Broker\DemoBrokerTests.cs" />
+    <Compile Include="Exchange\BinanceTests.cs" />
     <Compile Include="Exchange\GDAXTests.cs" />
     <Compile Include="Expect.cs" />
     <Compile Include="JsonHelp.cs" />
