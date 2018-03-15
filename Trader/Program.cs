@@ -1,4 +1,6 @@
 ﻿using Autofac;
+using BinanceExchange.API.Client;
+using BinanceExchange.API.Client.Interfaces;
 using FluentScheduler;
 using System;
 using System.Linq;
@@ -56,8 +58,10 @@ namespace Trader
             builder.RegisterType<Trader>();
 
             builder.RegisterInstance(config);
+            builder.RegisterInstance(new ClientConfiguration() { ApiKey = config.ApiKey, SecretKey = config.ApiKeySecret });
 
             builder.RegisterType<WebSocket>().As<IWebSocket>();
+            builder.RegisterType<BinanceClient>().As<IBinanceClient>();
             builder.RegisterType<UtcTime>().As<ITime>();
 
             Type exchangeType = typeof(Program).Assembly.GetTypes().Where(t => t.IsAssignableTo<IExchange>()).FirstOrDefault((t) =>

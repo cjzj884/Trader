@@ -22,13 +22,25 @@ namespace Trader.Reporter
             this.originalColor = Console.ForegroundColor;
         }
 
+        public Task ReportAttemptedBuy(IBroker broker, Sample sample)
+        {
+            PrintWithColor(ConsoleColor.White, $"Executing buy @ {sample.Value:0.####}");
+            return Task.CompletedTask;
+        }
+
+        public Task ReportAttemptedSell(IBroker broker, Sample sample)
+        {
+            PrintWithColor(ConsoleColor.White, $"Executing sell @ {sample.Value:0.####}");
+            return Task.CompletedTask;
+        }
+
         public async Task ReportBuy(IBroker broker, Sample sample)
         {
-            PrintWithColor(ConsoleColor.Green, $"Executing buy @ {sample.Value:0.####}: Value={broker.GetTotalValue(sample):0.####}: Fees={broker.Fees}");
+            PrintWithColor(ConsoleColor.Green, $"Executed buy @ {sample.Value:0.####}: Value={broker.GetTotalValue(sample):0.####} ({broker.Asset1Holdings} asset 1)");
 
             using (var appender = file.AppendText())
             {
-                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},buy,{broker.Asset2Holdings},{broker.Asset1Holdings},{broker.Fees}");
+                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},buy,{broker.Asset2Holdings},{broker.Asset1Holdings}");
                 await appender.FlushAsync();
             }
         }
@@ -43,17 +55,17 @@ namespace Trader.Reporter
         {
             using (var appender = file.AppendText())
             {
-                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},update,{broker.Asset2Holdings},{broker.Asset1Holdings},{broker.Fees}");
+                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},update,{broker.Asset2Holdings},{broker.Asset1Holdings}");
                 await appender.FlushAsync();
             }
         }
 
         public async Task ReportSell(IBroker broker, Sample sample)
         {
-            PrintWithColor(ConsoleColor.Red, $"Executing sell @ {sample.Value:0.####}: Value={broker.GetTotalValue(sample):0.####}: Fees={broker.Fees}");
+            PrintWithColor(ConsoleColor.Red, $"Executed sell @ {sample.Value:0.####}: Value={broker.GetTotalValue(sample):0.####} ({broker.Asset2Holdings} asset 2)");
             using (var appender = file.AppendText())
             {
-                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},sell,{broker.Asset2Holdings},{broker.Asset1Holdings},{broker.Fees}");
+                await appender.WriteLineAsync($"{DateTime.Now},{sample.Value},sell,{broker.Asset2Holdings},{broker.Asset1Holdings}");
                 await appender.FlushAsync();
             }
         }

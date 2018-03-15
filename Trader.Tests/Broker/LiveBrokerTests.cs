@@ -3,11 +3,12 @@ using Moq;
 using System;
 using Trader.Broker;
 using Trader.Exchange;
+using Trader.Time;
 
 namespace Trader.Tests.Broker
 {
     [TestClass]
-    public class DemoBrokerTests
+    public class LiveBrokerTests
     {
         #region Initialize
 
@@ -21,7 +22,7 @@ namespace Trader.Tests.Broker
                 .ReturnsAsync(new Sample { Value = 100, DateTime = now + TimeSpan.FromMinutes(9) })
                 .ReturnsAsync(new Sample { Value = 100, DateTime = now + TimeSpan.FromMinutes(10) });
 
-            var subject = new DemoBroker(exchangeMock.Object);
+            var subject = new LiveBroker(exchangeMock.Object, Mock.Of<ITime>());
 
             var result = subject.InitializeAsync(Assets.DOGE, Assets.BTC).Result;
 
@@ -39,7 +40,7 @@ namespace Trader.Tests.Broker
                 .ReturnsAsync(new Sample { Value = 102, DateTime = now + TimeSpan.FromMinutes(9) })
                 .ReturnsAsync(new Sample { Value = 100, DateTime = now + TimeSpan.FromMinutes(10) });
 
-            var subject = new DemoBroker(exchangeMock.Object);
+            var subject = new LiveBroker(exchangeMock.Object, Mock.Of<ITime>());
 
             var result = subject.InitializeAsync(Assets.DOGE, Assets.BTC).Result;
 
@@ -56,7 +57,7 @@ namespace Trader.Tests.Broker
                 .ReturnsAsync(new Sample { Value = 99, DateTime = now + TimeSpan.FromMinutes(9) })
                 .ReturnsAsync(new Sample { Value = 101, DateTime = now + TimeSpan.FromMinutes(10) });
 
-            var subject = new DemoBroker(exchangeMock.Object);
+            var subject = new LiveBroker(exchangeMock.Object, Mock.Of<ITime>());
 
             var result = subject.InitializeAsync(Assets.DOGE, Assets.BTC).Result;
 
@@ -70,7 +71,7 @@ namespace Trader.Tests.Broker
         [TestMethod]
         public void Buy_NotInitialized_ThrowsException()
         {
-            var subject = new DemoBroker(Mock.Of<IExchange>());
+            var subject = new LiveBroker(Mock.Of<IExchange>(), Mock.Of<ITime>());
 
             var exception = Expect.ThrowAsync<InvalidOperationException>(async () => { await subject.Buy(new Sample()); });
 
@@ -80,7 +81,7 @@ namespace Trader.Tests.Broker
         [TestMethod]
         public void Buy_NullSample_ThrowsException()
         {
-            var subject = new DemoBroker(Mock.Of<IExchange>());
+            var subject = new LiveBroker(Mock.Of<IExchange>(), Mock.Of<ITime>());
 
             var exception = Expect.ThrowAsync<ArgumentNullException>(async () => { await subject.Buy(null); });
 
@@ -92,15 +93,58 @@ namespace Trader.Tests.Broker
         {
             var mockExchange = new Mock<IExchange>();
             var sample = new Sample() { Value = 1.25M };
-            var subject = InitBroker(mockExchange);
+            var order = new Order() { Id = "123" };
+            var subject = InitBroker(mockExchange, new Mock<ITime>());
             mockExchange.Setup(m => m.TakerFeeRate).Returns(0.003M);
+            mockExchange.Setup(m => m.Buy(sample, 1M)).ReturnsAsync(order);
+            mockExchange.Setup(m => m.CheckOrder(order)).ReturnsAsync(new Order() { Fulfilled = true });
+            mockExchange.Setup(m => m.GetAssetBalance(Assets.DOGE)).ReturnsAsync(18M);
+            mockExchange.Setup(m => m.GetAssetBalance(Assets.BTC)).ReturnsAsync(0M);
 
-            subject.Buy(sample);
+            subject.Buy(sample).Wait();
 
             Assert.AreEqual(0, subject.Asset2Holdings);
             Assert.AreEqual(18, subject.Asset1Holdings);
-            mockExchange.Verify(m => m.Buy(It.IsAny<Sample>(), It.IsAny<decimal>()), Times.Never);
-            mockExchange.Verify(m => m.Sell(It.IsAny<Sample>(), It.IsAny<decimal>()), Times.Never);
+        }
+
+        [TestMethod]
+        public void Buy_NotImmediatelyFilled_LoopsUntilFilled()
+        {
+            var mockTime = new Mock<ITime>();
+            var mockExchange = new Mock<IExchange>();
+            var sample = new Sample() { Value = 1.25M };
+            var order = new Order() { Id = "123" };
+            var subject = InitBroker(mockExchange, mockTime);
+            mockExchange.Setup(m => m.TakerFeeRate).Returns(0.003M);
+            mockExchange.Setup(m => m.Buy(sample, 1M)).ReturnsAsync(order);
+            mockExchange.SetupSequence(m => m.CheckOrder(It.Is<Order>(o => o.Id == "123")))
+                .ReturnsAsync(new Order() { Fulfilled = false, Id = "123" })
+                .ReturnsAsync(new Order() { Fulfilled = false, Id = "123" })
+                .ReturnsAsync(new Order() { Fulfilled = true, Id = "123" });
+            mockExchange.Setup(m => m.GetAssetBalance(Assets.DOGE)).ReturnsAsync(0M);
+            mockExchange.Setup(m => m.GetAssetBalance(Assets.BTC)).ReturnsAsync(22.50M);
+
+            subject.Buy(sample).Wait();
+
+            Assert.AreEqual(22.50M, subject.Asset2Holdings);
+            Assert.AreEqual(0M, subject.Asset1Holdings);
+            mockExchange.Verify(m => m.CheckOrder(It.Is<Order>(o => o.Id == "123")), Times.Exactly(3));
+            mockTime.Verify(m => m.Wait(1000), Times.Exactly(3));
+        }
+
+        [TestMethod]
+        public void Buy_ExchangeReturnedNull_AssumeUnnecessaryOrderAndDoNothing()
+        {
+            var mockExchange = new Mock<IExchange>();
+            var sample = new Sample() { Value = 1.25M };
+            var subject = InitBroker(mockExchange, new Mock<ITime>());
+            mockExchange.Setup(m => m.TakerFeeRate).Returns(0.003M);
+            mockExchange.Setup(m => m.Buy(sample, 1M)).ReturnsAsync((Order)null);
+
+            subject.Buy(sample).Wait();
+
+            Assert.AreEqual(1M, subject.Asset2Holdings);
+            Assert.AreEqual(10M, subject.Asset1Holdings);
         }
 
         #endregion
@@ -110,7 +154,7 @@ namespace Trader.Tests.Broker
         [TestMethod]
         public void Sell_NotInitialized_ThrowsException()
         {
-            var subject = new DemoBroker(Mock.Of<IExchange>());
+            var subject = new LiveBroker(Mock.Of<IExchange>(), Mock.Of<ITime>());
 
             var exception = Expect.ThrowAsync<InvalidOperationException>(async () => { await subject.Sell(new Sample()); });
 
@@ -120,7 +164,7 @@ namespace Trader.Tests.Broker
         [TestMethod]
         public void Sell_NullSample_ThrowsException()
         {
-            var subject = new DemoBroker(Mock.Of<IExchange>());
+            var subject = new LiveBroker(Mock.Of<IExchange>(), Mock.Of<ITime>());
 
             var exception = Expect.ThrowAsync<ArgumentNullException>(async () => { await subject.Sell(null); });
 
@@ -132,15 +176,58 @@ namespace Trader.Tests.Broker
         {
             var mockExchange = new Mock<IExchange>();
             var sample = new Sample() { Value = 1.25M };
-            var subject = InitBroker(mockExchange);
+            var order = new Order() { Id = "123" };
+            var subject = InitBroker(mockExchange, new Mock<ITime>());
             mockExchange.Setup(m => m.TakerFeeRate).Returns(0.003M);
+            mockExchange.Setup(m => m.Sell(sample, 10M)).ReturnsAsync(order);
+            mockExchange.Setup(m => m.CheckOrder(order)).ReturnsAsync(new Order() { Fulfilled = true });
+            mockExchange.Setup(m => m.GetAssetBalance(Assets.DOGE)).ReturnsAsync(0M);
+            mockExchange.Setup(m => m.GetAssetBalance(Assets.BTC)).ReturnsAsync(22.50M);
 
-            subject.Sell(sample);
+            subject.Sell(sample).Wait();
 
             Assert.AreEqual(22.50M, subject.Asset2Holdings);
             Assert.AreEqual(0, subject.Asset1Holdings);
-            mockExchange.Verify(m => m.Buy(It.IsAny<Sample>(), It.IsAny<decimal>()), Times.Never);
-            mockExchange.Verify(m => m.Sell(It.IsAny<Sample>(), It.IsAny<decimal>()), Times.Never);
+        }
+
+        [TestMethod]
+        public void Sell_NotImmediatelyFilled_LoopsUntilFilled()
+        {
+            var mockTime = new Mock<ITime>();
+            var mockExchange = new Mock<IExchange>();
+            var sample = new Sample() { Value = 1.25M };
+            var order = new Order() { Id = "123" };
+            var subject = InitBroker(mockExchange, mockTime);
+            mockExchange.Setup(m => m.TakerFeeRate).Returns(0.003M);
+            mockExchange.Setup(m => m.Sell(sample, 10M)).ReturnsAsync(order);
+            mockExchange.SetupSequence(m => m.CheckOrder(It.Is<Order>(o => o.Id == "123")))
+                .ReturnsAsync(new Order() { Fulfilled = false, Id = "123" })
+                .ReturnsAsync(new Order() { Fulfilled = false, Id = "123" })
+                .ReturnsAsync(new Order() { Fulfilled = true, Id = "123" });
+            mockExchange.Setup(m => m.GetAssetBalance(Assets.DOGE)).ReturnsAsync(0M);
+            mockExchange.Setup(m => m.GetAssetBalance(Assets.BTC)).ReturnsAsync(22.50M);
+
+            subject.Sell(sample).Wait();
+
+            Assert.AreEqual(22.50M, subject.Asset2Holdings);
+            Assert.AreEqual(0, subject.Asset1Holdings);
+            mockExchange.Verify(m => m.CheckOrder(It.Is<Order>(o => o.Id == "123")), Times.Exactly(3));
+            mockTime.Verify(m => m.Wait(1000), Times.Exactly(3));
+        }
+
+        [TestMethod]
+        public void Sell_ExchangeReturnedNull_AssumeUnnecessaryOrderAndDoNothing()
+        {
+            var mockExchange = new Mock<IExchange>();
+            var sample = new Sample() { Value = 1.25M };
+            var subject = InitBroker(mockExchange, new Mock<ITime>());
+            mockExchange.Setup(m => m.TakerFeeRate).Returns(0.003M);
+            mockExchange.Setup(m => m.Sell(sample, 1M)).ReturnsAsync((Order)null);
+
+            subject.Sell(sample).Wait();
+
+            Assert.AreEqual(1M, subject.Asset2Holdings);
+            Assert.AreEqual(10M, subject.Asset1Holdings);
         }
 
         #endregion
@@ -152,7 +239,7 @@ namespace Trader.Tests.Broker
         {
             var sample = new Sample();
             var exchangeMock = new Mock<IExchange>();
-            var subject = InitBroker(exchangeMock);
+            var subject = InitBroker(exchangeMock, new Mock<ITime>());
 
             exchangeMock.Setup(m => m.GetCurrentPrice()).ReturnsAsync(sample);
 
@@ -164,7 +251,7 @@ namespace Trader.Tests.Broker
         [TestMethod]
         public void CheckPrice_NotInitialized_ThrowsException()
         {
-            var subject = new DemoBroker(Mock.Of<IExchange>());
+            var subject = new LiveBroker(Mock.Of<IExchange>(), Mock.Of<ITime>());
 
             var exception = Expect.ThrowAsync<InvalidOperationException>(async () => { await subject.CheckPriceAsync(); });
 
@@ -178,22 +265,22 @@ namespace Trader.Tests.Broker
         [TestMethod]
         public void GetTotalValue_NullSample_ThrowsException()
         {
-            var subject = new DemoBroker(Mock.Of<IExchange>());
+            var subject = new LiveBroker(Mock.Of<IExchange>(), Mock.Of<ITime>());
 
             var exception = Expect.Throw<ArgumentNullException>(() => { subject.GetTotalValue(null); });
 
-            Assert.AreEqual("rate", exception.ParamName);
+            Assert.AreEqual("sample", exception.ParamName);
         }
 
         [TestMethod]
         public void GetTotalValue_GoodSample_CalculatesCorrectly()
         {
             var sample = new Sample() { Value = 1.25M };
-            var subject = new DemoBroker(Mock.Of<IExchange>());
+            var subject = InitBroker(new Mock<IExchange>(), new Mock<ITime>());
 
             var result = subject.GetTotalValue(sample);
 
-            Assert.AreEqual(22.50M, result);
+            Assert.AreEqual(13.5M, result);
         }
 
         #endregion
@@ -215,7 +302,7 @@ namespace Trader.Tests.Broker
         public void Dispose_Initialized_CannotDoStuff()
         {
             var mockExchange = new Mock<IExchange>();
-            var subject = InitBroker(mockExchange);
+            var subject = InitBroker(mockExchange, new Mock<ITime>());
 
             subject.Dispose();
             var exception = Expect.ThrowAsync<InvalidOperationException>(async () => { await subject.Sell(new Sample()); });
@@ -226,19 +313,20 @@ namespace Trader.Tests.Broker
 
         #endregion
 
-        private DemoBroker InitBroker(Mock<IExchange> socketMock)
+        private LiveBroker InitBroker(Mock<IExchange> exchangeMock, Mock<ITime> timeMock)
         {
             var now = DateTime.Now;
-            socketMock.SetupSequence(m => m.GetCurrentPrice())
+            exchangeMock.SetupSequence(m => m.GetCurrentPrice())
                 .ReturnsAsync(new Sample { Value = 1.000M, DateTime = now })
                 .ReturnsAsync(new Sample { Value = 1.000M, DateTime = now + TimeSpan.FromMinutes(9) })
                 .ReturnsAsync(new Sample { Value = 1.000M, DateTime = now + TimeSpan.FromMinutes(10) });
+            exchangeMock.Setup(m => m.Initialize(Assets.DOGE, Assets.BTC)).ReturnsAsync((10M, 1M));
 
-            var subject = new DemoBroker(socketMock.Object);
+            var subject = new LiveBroker(exchangeMock.Object, timeMock.Object);
 
-            subject.InitializeAsync(Assets.DOGE, Assets.DOGE).Wait();
+            subject.InitializeAsync(Assets.DOGE, Assets.BTC).Wait();
 
-            socketMock.Reset();
+            exchangeMock.Reset();
             return subject;
         }
     }

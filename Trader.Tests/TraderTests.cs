@@ -50,13 +50,13 @@ namespace Trader.Tests
         {
             var config = new Config(false) { Asset1 = Assets.DOGE, Asset2 = Assets.DOGE };
             var brokerMock = new Mock<IBroker>();
-            brokerMock.Setup(m => m.Initialize(Assets.DOGE, Assets.DOGE)).ReturnsAsync(true);
+            brokerMock.Setup(m => m.InitializeAsync(Assets.DOGE, Assets.DOGE)).ReturnsAsync(true);
             var reporterMock = new Mock<IReporter>();
             var subject = new Trader(config, brokerMock.Object, reporterMock.Object);
 
             subject.Initialize().Wait();
 
-            brokerMock.Verify(m => m.Initialize(Assets.DOGE, Assets.DOGE));
+            brokerMock.Verify(m => m.InitializeAsync(Assets.DOGE, Assets.DOGE));
             reporterMock.Verify(m => m.ReportInitial(true));
         }
 
@@ -82,8 +82,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1005 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false) { NoiseThreshold = 0.01, Asset1 = Assets.BTC, Asset2 = Assets.DOGE };
 
@@ -104,8 +104,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 995 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false) { NoiseThreshold = 0.01, Asset1 = Assets.BTC, Asset2 = Assets.DOGE };
 
@@ -130,8 +130,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1100 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false) {
                 NoiseThreshold = 0.01,
@@ -162,8 +162,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1131 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {
@@ -196,8 +196,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1129 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {
@@ -233,8 +233,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1134, DateTime = DateTime.Now };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {
@@ -270,8 +270,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 1141, DateTime = DateTime.Now };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(true);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {
@@ -308,8 +308,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 840 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {
@@ -341,8 +341,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 969 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {
@@ -375,8 +375,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 971 };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {
@@ -412,8 +412,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 966, DateTime = DateTime.Now };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {
@@ -449,8 +449,8 @@ namespace Trader.Tests
             var reporter = new Mock<IReporter>();
             var newPrice = new Sample() { Value = 959, DateTime = DateTime.Now };
             var broker = new Mock<IBroker>();
-            broker.Setup(b => b.Initialize(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
-            broker.Setup(b => b.CheckPrice()).ReturnsAsync(newPrice);
+            broker.Setup(b => b.InitializeAsync(Assets.BTC, Assets.DOGE)).ReturnsAsync(false);
+            broker.Setup(b => b.CheckPriceAsync()).ReturnsAsync(newPrice);
 
             var config = new Config(false)
             {

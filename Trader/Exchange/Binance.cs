@@ -1,7 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using BinanceExchange.API.Client.Interfaces;
+using BinanceExchange.API.Enums;
+using BinanceExchange.API.Models.Request;
+using BinanceExchange.API.Models.Response;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
@@ -15,31 +18,45 @@ namespace Trader.Exchange
     {
         private readonly IWebSocket websocket;
         private readonly ITime time;
+        private readonly IBinanceClient binanceClient;
         private string tradingPair;
         private bool connected = false;
-        private IEnumerable<(Assets, Assets)> validTradingPairs = new List<(Assets, Assets)> {
-            (Assets.BTC, Assets.USDT),
-            (Assets.ETH, Assets.USDT)
-        };
+        private decimal minQuantity;
 
-        public Binance(IWebSocket websocket, ITime time)
+        public Binance(IWebSocket websocket, IBinanceClient binanceClient, ITime time)
         {
             this.websocket = websocket ?? throw new ArgumentNullException(nameof(websocket));
             this.time = time ?? throw new ArgumentNullException(nameof(time));
+            this.binanceClient = binanceClient ?? throw new ArgumentNullException(nameof(binanceClient));
         }
 
-        public double TakerFeeRate => 0.001;
+        public decimal TakerFeeRate => 0.001M;
 
-        public async Task Initialize(Assets asset1, Assets asset2)
+        public async Task<(decimal, decimal)> Initialize(Assets asset1, Assets asset2)
         {
-            if (!validTradingPairs.Contains((asset1, asset2)))
+            tradingPair = asset1.ToString().ToUpper() + asset2.ToString().ToUpper();
+            var exchangeMetadata = await binanceClient.GetExchangeInfo();
+            var pairInfo = exchangeMetadata.Symbols.Where(s => s.Symbol == tradingPair).FirstOrDefault();
+            if (pairInfo == null)
             {
-                throw new ArgumentException($"Trading pair {asset1.ToString()}/{asset2.ToString()} is not available on Binance");
+                throw new ArgumentException($"Trading pair {tradingPair} is not available on Binance");
             }
+            
+            minQuantity = (pairInfo.Filters.FirstOrDefault(f => f.FilterType == ExchangeInfoSymbolFilterType.LotSize) as ExchangeInfoSymbolFilterLotSize).MinQty;
 
-            tradingPair = asset1.ToString().ToLower() + asset2.ToString().ToLower();
-            await this.websocket.Connect($"wss://stream.binance.com:9443/ws/{tradingPair}@ticker");
+            var asset1Balance = await GetAssetBalance(asset1);
+            var asset2Balance = await GetAssetBalance(asset2);
+
+            await this.websocket.Connect($"wss://stream.binance.com:9443/ws/{tradingPair.ToLower()}@ticker");
+            
             connected = true;
+            return (asset1Balance, asset2Balance);
+        }
+
+        public async Task<decimal> GetAssetBalance(Assets assetType)
+        {
+            var account = await binanceClient.GetAccountInformation();
+            return account.Balances.FirstOrDefault(b => b.Asset == assetType.ToString())?.Free ?? 0;
         }
 
         public async Task<Sample> GetCurrentPrice()
@@ -61,17 +78,16 @@ namespace Trader.Exchange
                 {
                     Console.WriteLine($"SOCKET ERROR: {e.Message}");
                     Console.WriteLine("Attempting reconnect and trying again");
-                    await this.websocket.Connect($"wss://stream.binance.com:9443/ws/{tradingPair}@ticker");
+                    await this.websocket.Connect($"wss://stream.binance.com:9443/ws/{tradingPair.ToLower()}@ticker");
                     continue;
                 }
 
                 JObject message = JsonConvert.DeserializeObject(json) as JObject;
-                double price = 0;
                 if (message != null &&
                     message.ContainsKey("e") &&
                     message.GetValue("e").ToString() == "24hrTicker" &&
                     message.ContainsKey("b") &&
-                    Double.TryParse(message.GetValue("b").ToString(), out price))
+                    decimal.TryParse(message.GetValue("b").ToString(), out decimal price))
                 {
                     sample = new Sample() { Value = price, DateTime = time.Now };
                 }
@@ -83,6 +99,96 @@ namespace Trader.Exchange
             } while (sample == null);
 
             return sample;
+        }
+
+        public async Task<Order> Buy(Sample rate, decimal quantity)
+        {
+            rate = rate ?? throw new ArgumentNullException(nameof(rate));
+            if (quantity <= 0)
+            {
+                throw new ArgumentException("Quantity must be greater than 0", nameof(quantity));
+            }
+
+            if (!connected)
+            {
+                throw new InvalidOperationException("Cannot Buy until Initialized");
+            }
+
+            // This quantity is coming in as asset 2, divide by rate to get us asset 1
+            quantity = quantity / rate.Value;
+            // Deduct the approximate fee we'll need - the API isn't very smart about implicitly including that.
+            var calculatedQuantity = quantity - (this.TakerFeeRate * quantity);
+            // We're not allowed to sell micro-quantities, cut off the trailing decimals
+            calculatedQuantity = calculatedQuantity - (calculatedQuantity % minQuantity);
+
+            if (calculatedQuantity <= 0)
+            {
+                return null;
+            }
+
+            var response = await binanceClient.CreateOrder(new CreateOrderRequest() {
+                Symbol = tradingPair,
+                Quantity = Math.Round(calculatedQuantity, 20),
+                Side = OrderSide.Buy,
+                Type = OrderType.Market
+            });
+            return new Order()
+            {
+                Id = response.ClientOrderId,
+                Fulfilled = false
+            };
+        }
+
+        public async Task<Order> Sell(Sample rate, decimal quantity)
+        {
+            rate = rate ?? throw new ArgumentNullException(nameof(rate));
+            if (quantity <= 0)
+            {
+                throw new ArgumentException("Quantity must be greater than 0", nameof(quantity));
+            }
+
+            if (!connected)
+            {
+                throw new InvalidOperationException("Cannot Sell until Initialized");
+            }
+
+            // We're not allowed to sell micro-quantities, cut off the trailing decimals
+            var calculatedQuantity = quantity - (quantity % minQuantity);
+
+            if (calculatedQuantity <= 0)
+            {
+                return null;
+            }
+
+            var response = await binanceClient.CreateOrder(new CreateOrderRequest()
+            {
+                Symbol = tradingPair,
+                Quantity = Math.Round(calculatedQuantity, 20),
+                Side = OrderSide.Sell,
+                Type = OrderType.Market
+            });
+            return new Order()
+            {
+                Id = response.ClientOrderId,
+                Fulfilled = false
+            };
+        }
+
+        public async Task<Order> CheckOrder(Order order)
+        {
+            order = order ?? throw new ArgumentNullException(nameof(order));
+            if (order.Id == null || order.Id == string.Empty)
+                throw new ArgumentException("Order's ID must not be null or empty", nameof(order));
+
+            if (!connected)
+                throw new InvalidOperationException("Cannot CheckOrder until exchange has been Initialized");
+
+            var updatedOrder = await binanceClient.QueryOrder(new QueryOrderRequest() { OriginalClientOrderId = order.Id, Symbol = tradingPair });
+            return new Order()
+            {
+                Id = order.Id,
+                Fulfilled = updatedOrder.Status == OrderStatus.Filled
+            };
         }
 
         public void Dispose()

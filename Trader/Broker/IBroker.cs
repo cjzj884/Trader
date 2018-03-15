@@ -6,19 +6,17 @@ namespace Trader.Broker
 {
     public interface IBroker : IDisposable
     {
-        double Asset1Holdings { get; }
-        double Asset2Holdings { get; }
+        decimal Asset1Holdings { get; }
+        decimal Asset2Holdings { get; }
 
-        double Fees { get; }
+        decimal GetTotalValue(Sample sample);
 
-        double GetTotalValue(Sample sample);
+        Task<bool> InitializeAsync(Assets asset1, Assets asset2);
 
-        Task<bool> Initialize(Assets asset1, Assets asset2);
+        Task<Sample> CheckPriceAsync();
 
-        Task<Sample> CheckPrice();
+        Task Buy(Sample rate);
 
-        Task<double> Buy(Sample rate);
-
-        Task<double> Sell(Sample rate);
+        Task Sell(Sample rate);
     }
 }

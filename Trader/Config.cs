@@ -28,6 +28,8 @@ namespace Trader
                 Reporter = (Reporters)Enum.Parse(typeof(Reporters), ConfigurationManager.AppSettings["Reporter"]);
                 Asset1 = (Assets)Enum.Parse(typeof(Assets), ConfigurationManager.AppSettings["Asset1"]);
                 Asset2 = (Assets)Enum.Parse(typeof(Assets), ConfigurationManager.AppSettings["Asset2"]);
+                ApiKey = ConfigurationManager.AppSettings["ApiKey"];
+                ApiKeySecret = ConfigurationManager.AppSettings["ApiKeySecret"];
             }
             catch (Exception e)
             {
@@ -45,5 +47,7 @@ namespace Trader
         public Reporters Reporter { get; set; }
         public Assets Asset1 { get; set; }
         public Assets Asset2 { get; set; }
+        public string ApiKey { get; set; }
+        public string ApiKeySecret { get; set; }
     }
 }

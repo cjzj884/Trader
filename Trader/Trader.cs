@@ -26,7 +26,7 @@ namespace Trader
 
         public async Task Initialize()
         {
-            Bullish = await broker.Initialize(config.Asset1, config.Asset2);
+            Bullish = await broker.InitializeAsync(config.Asset1, config.Asset2);
             await reporter.ReportInitial(Bullish);
             initialized = true;
         }
@@ -36,23 +36,24 @@ namespace Trader
             if (!initialized)
                 throw new InvalidOperationException("Trader must be Initialized before it can Trade");
 
-            Current = await broker.CheckPrice();
+            Current = await broker.CheckPriceAsync();
             await reporter.ReportNewPrice(broker, Current);
             LastSale = LastSale ?? Current;
             High = High == null || High.Value < Current.Value ? Current : High;
             Low = Low == null || Low.Value > Current.Value ? Current : Low;
 
-            if (Math.Abs(Current.Value - LastSale.Value) < Current.Value * config.NoiseThreshold)
+            if (Math.Abs(Current.Value - LastSale.Value) < Current.Value * (decimal)config.NoiseThreshold)
                 return; // The current activity is too small for us to care
 
-            double timeSensitiveThreshold = CalcThresholdWithDecay(Current, LastSale);
+            decimal timeSensitiveThreshold = CalcThresholdWithDecay(Current, LastSale);
 
             if (Bullish)
             {
                 var thresholdValue = High.Value - (timeSensitiveThreshold * (High.Value - Low.Value));
                 if (Current.Value < thresholdValue)
                 {
-                    var fee = await broker.Sell(Current);
+                    await reporter.ReportAttemptedSell(broker, Current);
+                    await broker.Sell(Current);
                     await reporter.ReportSell(broker, Current);
                     Bullish = false;
                     Low = null;
@@ -64,7 +65,8 @@ namespace Trader
                 var thresholdValue = Low.Value + (timeSensitiveThreshold * (High.Value - Low.Value));
                 if (Current.Value > thresholdValue)
                 {
-                    var fee = await broker.Buy(Current);
+                    await reporter.ReportAttemptedBuy(broker, Current);
+                    await broker.Buy(Current);
                     await reporter.ReportBuy(broker, Current);
                     Bullish = true;
                     High = null;
@@ -73,12 +75,12 @@ namespace Trader
             }
         }
 
-        private double CalcThresholdWithDecay(Sample current, Sample lastSale)
+        private decimal CalcThresholdWithDecay(Sample current, Sample lastSale)
         {
             var decay = ((double)(current.DateTime - lastSale.DateTime).Ticks) / config.SwingThresholdDecayInterval.Ticks;
             decay = decay > 1 ? 1 : decay;
             var timeSensitiveThreshold = config.SwingThreshold - (decay * (config.SwingThreshold - config.MinSwingThreshold));
-            return timeSensitiveThreshold;
+            return (decimal)timeSensitiveThreshold;
         }
     }
 }

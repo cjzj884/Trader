@@ -8,9 +8,8 @@ namespace Trader.Broker
     [BrokerType(Brokers.Demo)]
     public class DemoBroker : IBroker
     {
-        private double asset1;
-        private double asset2;
-        private double fees;
+        private decimal asset1;
+        private decimal asset2;
         private bool initialized;
         private readonly IExchange exchange;
 
@@ -22,12 +21,10 @@ namespace Trader.Broker
             initialized = false;
         }
 
-        public double Asset1Holdings { get => asset1; }
-        public double Asset2Holdings { get => asset2; }
+        public decimal Asset1Holdings { get => asset1; }
+        public decimal Asset2Holdings { get => asset2; }
 
-        public double Fees { get => fees; }
-
-        public async Task<bool> Initialize(Assets asset1, Assets asset2)
+        public async Task<bool> InitializeAsync(Assets asset1, Assets asset2)
         {
             await exchange.Initialize(asset1, asset2);
 
@@ -52,36 +49,32 @@ namespace Trader.Broker
             return startSample.Value < endSample.Value;
         }
 
-        public Task<double> Buy(Sample rate)
+        public Task Buy(Sample rate)
         {
             if (rate == null)
                 throw new ArgumentNullException(nameof(rate));
             if (!initialized)
                 throw new InvalidOperationException("Broker cannot Buy until Initialized!");
-
-            var fee = asset2 * exchange.TakerFeeRate;
-            asset1 += ((asset2 - fee) / rate.Value);
-            fees += fee;
+            
+            asset1 += asset2 / rate.Value;
             asset2 = 0;
-            return Task.FromResult(fee);
+            return Task.CompletedTask;
         }
 
-        public Task<double> Sell(Sample rate)
+        public Task Sell(Sample rate)
         {
             if (rate == null)
                 throw new ArgumentNullException(nameof(rate));
             if (!initialized)
                 throw new InvalidOperationException("Broker cannot Sell until Initialized!");
-
-            var fee = (asset1 * rate.Value) * exchange.TakerFeeRate;
-            asset2 += (asset1 - (fee / rate.Value)) * rate.Value;
-            fees += fee;
+            
+            asset2 += asset1 * rate.Value;
             asset1 = 0;
 
-            return Task.FromResult(fee);
+            return Task.CompletedTask;
         }
 
-        public async Task<Sample> CheckPrice()
+        public async Task<Sample> CheckPriceAsync()
         {
             if (!initialized)
                 throw new InvalidOperationException("Broker cannot CheckPrice until Initialized!");
@@ -89,7 +82,7 @@ namespace Trader.Broker
             return await exchange.GetCurrentPrice();
         }
 
-        public double GetTotalValue(Sample rate)
+        public decimal GetTotalValue(Sample rate)
         {
             if (rate == null)
                 throw new ArgumentNullException(nameof(rate));
